@@ -7,7 +7,7 @@ export default async function Home() {
 
   return (
     <main>
-      <h1>test 1</h1>
+      <h1>EMAIL</h1>
       <h1>TEST PR</h1>
       <h1>Clients</h1>
       <p style={{ color: "#57606a" }}>
@@ -22,7 +22,7 @@ export default async function Home() {
                 style={{
                   textAlign: "left",
                   padding: "8px 12px",
-                  background: "#24292f",
+                  background: "#1c4372ff",
                   color: "#fff",
                 }}
               >
