@@ -1,0 +1,124 @@
+# =============================================================================
+# Docker Compose — Orchestration multi-conteneurs
+# =============================================================================
+# Docker Compose permet de définir et lancer plusieurs conteneurs en une seule
+# commande ("docker compose up"). Chaque "service" ci-dessous correspond à un
+# conteneur distinct. Ils communiquent entre eux via un réseau interne créé
+# automatiquement par Compose (les services se trouvent par leur nom : "db", "web"…).
+# =============================================================================
+
+
+# "services:" est la section principale. Elle liste tous les conteneurs à lancer.
+services:
+
+  # ---------------------------------------------------------------------------
+  # Service "db" — Base de données PostgreSQL
+  # ---------------------------------------------------------------------------
+  db:
+    # "image:" utilise une image existante depuis Docker Hub (pas de build local).
+    # "postgres:17-alpine" = PostgreSQL version 17, basé sur Alpine Linux (léger).
+    image: postgres:17-alpine
+
+    # "env_file:" charge les variables d'environnement depuis le fichier .env.
+    # PostgreSQL attend notamment : POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB.
+    # Cela évite d'écrire les mots de passe en dur dans ce fichier.
+    env_file: .env.example
+
+    # "ports:" expose le port du conteneur sur la machine hôte.
+    # Format : "port_hôte:port_conteneur"
+    # Ici, le port 5432 du conteneur (port par défaut de PostgreSQL)
+    # est mappé sur le port 5432 de votre machine.
+    # Cela permet de se connecter à la base depuis l'hôte (ex: avec pgAdmin, DBeaver…).
+    ports:
+      - "5432:5432"
+
+    # "volumes:" permet de persister les données en dehors du conteneur.
+    # Sans volume, les données seraient perdues à chaque redémarrage du conteneur !
+    # "pgdata" est un volume nommé (défini en bas du fichier).
+    # "/var/lib/postgresql/data" est le dossier où PostgreSQL stocke ses données.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    # "healthcheck:" permet à Docker de vérifier que le service fonctionne bien.
+    # Les autres services peuvent attendre que ce healthcheck passe avant de démarrer
+    # (voir "depends_on" avec "condition: service_healthy" plus bas).
+    healthcheck:
+      # "pg_isready" est un utilitaire PostgreSQL qui vérifie si le serveur accepte
+      # les connexions. "$$" est l'échappement de "$" dans compose.yaml.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      # Vérifie toutes les 5 secondes…
+      interval: 5s
+      # …et réessaie jusqu'à 10 fois avant de considérer le service comme "unhealthy".
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Service "web" — Application Next.js
+  # ---------------------------------------------------------------------------
+  web:
+    # "build:" indique qu'on construit l'image localement (à partir du Dockerfile).
+    build:
+      # "context:" est le dossier envoyé au daemon Docker pour le build.
+      # "." = le dossier courant (celui contenant compose.yaml).
+      context: .
+      # "target:" cible une étape spécifique du Dockerfile multi-stage.
+      # Ici, on utilise l'étape "dev" (développement avec hot reload).
+      # Pour la production, on utiliserait "target: prod".
+      target: dev
+
+    # Charge les variables d'environnement (DATABASE_URL, etc.) depuis .env.
+    env_file: .env.example
+
+    # Expose le port 3000 (Next.js) sur la machine hôte.
+    # Vous accédez à l'application via http://localhost:3000.
+    ports:
+      - "3000:3000"
+
+    # Volumes pour le développement :
+    volumes:
+      # ".:/app" = monte le dossier courant de l'hôte dans /app du conteneur.
+      # Cela permet le HOT RELOAD : quand vous modifiez un fichier sur votre machine,
+      # le changement est immédiatement visible dans le conteneur, et Next.js
+      # recharge automatiquement la page.
+      - .:/app
+      # "/app/node_modules" = volume anonyme qui "protège" le dossier node_modules
+      # du conteneur. Sans cela, le montage ".:/app" écraserait les node_modules
+      # installés dans le conteneur avec ceux de l'hôte (qui pourraient être
+      # incompatibles ou absents). Ce volume anonyme isole node_modules.
+      - /app/node_modules
+
+    # "depends_on:" définit l'ordre de démarrage des services.
+    depends_on:
+      db:
+        # "condition: service_healthy" = attend que le healthcheck de "db" passe
+        # avant de lancer le service "web". Cela garantit que PostgreSQL est prêt
+        # à accepter des connexions avant que l'application ne démarre.
+        # Sans cette condition, l'app pourrait essayer de se connecter à une base
+        # qui n'est pas encore prête → erreur de connexion.
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Service "adminer" — Interface web d'administration de base de données
+  # ---------------------------------------------------------------------------
+  adminer:
+    # Adminer est un outil léger (un seul fichier PHP) pour gérer les bases de
+    # données via une interface web. C'est une alternative légère à phpMyAdmin/pgAdmin.
+    image: adminer
+
+    # Accessible via http://localhost:8080 dans votre navigateur.
+    # Pour se connecter : serveur = "db", utilisateur/mdp = ceux du .env.
+    # Note : on utilise "db" comme nom de serveur car Docker Compose crée un
+    # réseau interne où chaque service est accessible par son nom.
+    ports:
+      - "8080:8080"
+
+
+# =============================================================================
+# Volumes nommés
+# =============================================================================
+# Les volumes nommés sont gérés par Docker et persistent même si les conteneurs
+# sont supprimés. Ils sont stockés dans le système de fichiers de Docker
+# (généralement /var/lib/docker/volumes/ sur Linux).
+# Pour les supprimer : "docker volume rm mon-projet_pgdata"
+# ou "docker compose down -v" (⚠️  supprime TOUTES les données !).
+volumes:
+  pgdata:

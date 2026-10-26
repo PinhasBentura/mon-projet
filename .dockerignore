@@ -1,0 +1,34 @@
+# =============================================================================
+# .dockerignore — Fichiers exclus du contexte de build Docker
+# =============================================================================
+# Ce fichier fonctionne comme .gitignore, mais pour Docker.
+# Quand vous lancez "docker build", Docker envoie le contenu du dossier
+# (appelé "contexte de build") au daemon Docker. Les fichiers listés ici
+# sont EXCLUS de cet envoi.
+#
+# Pourquoi c'est important :
+#   1. Performance : moins de fichiers à envoyer = build plus rapide
+#   2. Sécurité : empêche d'inclure des secrets (.env) dans l'image
+#   3. Taille : l'image finale est plus légère
+#   4. Cache : évite d'invalider le cache Docker inutilement
+# =============================================================================
+
+# Dossier des dépendances Node.js (~200-500 Mo).
+# On les exclut car elles sont réinstallées dans le conteneur via "npm ci"
+# (elles pourraient être incompatibles si l'hôte n'est pas Linux/Alpine).
+node_modules
+
+# Dossier de build Next.js. On le reconstruit dans le conteneur
+# pour garantir un build propre et reproductible.
+.next
+
+# Historique Git. Inutile dans le conteneur et potentiellement volumineux.
+.git
+
+# Fichier de variables d'environnement contenant des SECRETS (mots de passe, clés API).
+# ⚠️  Ne JAMAIS inclure ce fichier dans une image Docker !
+# Les variables sont injectées au runtime via "env_file:" dans compose.yaml.
+.env
+
+# Fichiers générés (ex: client Prisma). Régénérés pendant le build du conteneur.
+generated

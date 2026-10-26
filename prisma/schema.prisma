@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Client {
+  id        Int      @id @default(autoincrement())
+  nom       String   @db.VarChar(100)
+  ville     String?  @db.VarChar(100)
+  telephone String?  @db.VarChar(20)
+  createdAt DateTime @default(now())
+
+  @@map("clients")
+}
