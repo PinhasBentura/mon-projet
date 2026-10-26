@@ -7,6 +7,7 @@ export default async function Home() {
 
   return (
     <main>
+      <h1>TEST PR</h1>
       <h1>Clients</h1>
       <p style={{ color: '#57606a' }}>Données lues avec Prisma dans PostgreSQL (conteneur « db »)</p>
       <table style={{ borderCollapse: 'collapse', minWidth: 420 }}>
